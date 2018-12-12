@@ -1,0 +1,69 @@
+// Step 1
+mkdir Step1_classes
+javac -classpath /usr/share/hadoop/hadoop-core-1.2.1.jar -d Step1_classes ./Step1.java
+jar -cvf ./Step1.jar -C Step1_classes/ .
+hadoop jar ./Step1.jar finalProj.hadoop.Step1 /user/hadoop/FinalInput/points /user/hadoop/FinalInput/P1Out
+
+hadoop fs -rmr -r -f /user/hadoop/FinalInput/P1Out
+
+// Step 2
+mkdir Step2_classes
+javac -classpath /usr/share/hadoop/hadoop-core-1.2.1.jar -d Step2_classes ./Step2.java
+jar -cvf ./Step2.jar -C Step2_classes/ .
+hadoop jar ./Step2.jar finalProj.hadoop.Step2 /user/hadoop/FinalInput/points /user/hadoop/FinalInput/P2Out 500
+
+hadoop fs -rmr -r -f /user/hadoop/FinalInput/P2Out
+
+// Step 3 notes
+-Mapper 1: takes each point and sends a kdist request to the reducer as well as its own kdist (format: {n,(r,p)}, {p,(d,kdist)}
+-Reducer 1: reducer receives kdist and requests for kdist for each point, outputs {p,(n,kdist)} for each requesting point
+
+mkdir Step3_classes
+javac -classpath /usr/share/hadoop/hadoop-core-1.2.1.jar -d Step3_classes ./Step3.java
+jar -cvf ./Step3.jar -C Step3_classes/ .
+hadoop jar ./Step3.jar finalProj.hadoop.Step3 /user/hadoop/FinalInput/P2Out /user/hadoop/FinalInput/P3Out
+
+remove: hadoop fs -rmr -r -f /user/hadoop/FinalInput/P3Out*
+
+// Step 4 notes
+-Mapper 2: takes kdist of each neighbor to its point and compares to distance between neighbor and point, takes max, outputs (p,max of kdist or dist) to reducer
+-Reducer 2: averages these to find LRD, outputs {p,LRD}
+
+mkdir Step4_classes
+javac -classpath /usr/share/hadoop/hadoop-core-1.2.1.jar -d Step4_classes ./Step4.java
+jar -cvf ./Step4.jar -C Step4_classes/ .
+hadoop jar ./Step4.jar finalProj.hadoop.Step4 /user/hadoop/FinalInput/P3Out /user/hadoop/FinalInput/P4Out
+
+remove: hadoop fs -rmr -r -f /user/hadoop/FinalInput/P4Out*
+
+
+// Step 5 - Compute LOF
+Mapper 1: Import points/neighbors and points/LRDs, map neighbor and requesting point as well as point and LRD to reducer
+Reducer 1: Receive per neighbor its own LRD and list of neighbors requesting LRD, output point with LRD of neighbor
+
+mkdir Step5_classes
+javac -classpath /usr/share/hadoop/hadoop-core-1.2.1.jar -d Step5_classes ./Step5.java
+jar -cvf ./Step5.jar -C Step5_classes/ .
+hadoop jar ./Step5.jar finalProj.hadoop.Step5 /user/hadoop/FinalInput/P2Out /user/hadoop/FinalInput/P4Out /user/hadoop/FinalInput/P5Out
+
+remove: hadoop fs -rmr -r -f /user/hadoop/FinalInput/P5Out*
+
+// Step 6 - Compute LOF
+Mapper 2: Import Points / LRD of self and point / LRD of neighbors, send to reducer basically as is
+Reducer 2: receive point, its own LRD, and LRDs of all neighbors.  Compute average of neighbor LRDs and divide by own LRD to get LOF.  Output point, LRD
+
+mkdir Step6_classes
+javac -classpath /usr/share/hadoop/hadoop-core-1.2.1.jar -d Step6_classes ./Step6.java
+jar -cvf ./Step6.jar -C Step6_classes/ .
+hadoop jar ./Step6.jar finalProj.hadoop.Step6 /user/hadoop/FinalInput/P5Out /user/hadoop/FinalInput/P4Out /user/hadoop/FinalInput/P6Out
+
+remove: hadoop fs -rmr -r -f /user/hadoop/FinalInput/P6Out*
+
+// To run everything
+hadoop fs -rmr -r -f /user/hadoop/FinalInput/P*
+hadoop jar ./Step1.jar finalProj.hadoop.Step1 /user/hadoop/FinalInput/points /user/hadoop/FinalInput/P1Out
+hadoop jar ./Step2.jar finalProj.hadoop.Step2 /user/hadoop/FinalInput/points /user/hadoop/FinalInput/P2Out 500
+hadoop jar ./Step3.jar finalProj.hadoop.Step3 /user/hadoop/FinalInput/P2Out /user/hadoop/FinalInput/P3Out
+hadoop jar ./Step4.jar finalProj.hadoop.Step4 /user/hadoop/FinalInput/P3Out /user/hadoop/FinalInput/P4Out
+hadoop jar ./Step5.jar finalProj.hadoop.Step5 /user/hadoop/FinalInput/P2Out /user/hadoop/FinalInput/P4Out /user/hadoop/FinalInput/P5Out
+hadoop jar ./Step6.jar finalProj.hadoop.Step6 /user/hadoop/FinalInput/P5Out /user/hadoop/FinalInput/P4Out /user/hadoop/FinalInput/P6Out
